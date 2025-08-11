@@ -85,8 +85,38 @@ const removeCustomer = async (req, res) => {
   return res.json({ success: true });
 };
 
+// Update days_stored and bill_amount for all customers
+const updateDaysAndBill = async (req, res) => {
+  const ratePerDay = 10; // Example rate per day
+
+  // Fetch all customers
+  const { data: customers, error: fetchError } = await supabase
+    .from('customers')
+    .select('*');
+
+  if (fetchError) return res.status(500).json({ error: fetchError.message });
+
+  // Update each customer
+  const updates = customers.map((customer) => {
+    const { daysStored, billAmount } = calculateBill(customer.created_at, ratePerDay, customer.quantity);
+    return supabase
+      .from('customers')
+      .update({ days_stored: daysStored, bill_amount: billAmount })
+      .eq('id', customer.id);
+  });
+
+  // Wait for all updates to complete
+  try {
+    await Promise.all(updates);
+    return res.json({ success: true, message: 'All records updated successfully' });
+  } catch (updateError) {
+    return res.status(500).json({ error: updateError.message });
+  }
+};
+
 module.exports = {
   getCustomers,
   addCustomer,
   removeCustomer,
+  updateDaysAndBill,
 };
