@@ -1,5 +1,14 @@
 const supabase = require('../services/supabaseClient');
 
+// Utility function to calculate days stored and bill amount
+const calculateBill = (createdAt, ratePerDay, quantity) => {
+  const now = new Date();
+  const createdDate = new Date(createdAt);
+  const daysStored = Math.ceil((now - createdDate) / (1000 * 60 * 60 * 24));
+  const billAmount = daysStored * ratePerDay * quantity;
+  return { daysStored, billAmount };
+};
+
 // Get all customers
 const getCustomers = async (req, res) => {
   const { data, error } = await supabase
@@ -20,9 +29,12 @@ const addCustomer = async (req, res) => {
     grain_type,
     room_number,
     quantity,
-    days_stored,
-    bill_amount,
   } = req.body;
+
+  const ratePerDay = 10; // Example rate per day
+  const createdAt = new Date().toISOString();
+  const { daysStored, billAmount } = calculateBill(createdAt, ratePerDay, quantity);
+
   const { data, error } = await supabase
     .from('customers')
     .insert([
@@ -34,8 +46,9 @@ const addCustomer = async (req, res) => {
         grain_type,
         room_number,
         quantity,
-        days_stored,
-        bill_amount,
+        days_stored: daysStored,
+        bill_amount: billAmount,
+        created_at: createdAt,
       },
     ]);
   if (error) return res.status(500).json({ error: error.message });
